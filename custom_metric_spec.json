@@ -1,0 +1,15 @@
+{
+   "TargetValue" : 75,
+   "CustomizedMetricSpecification" : {
+      "MetricName"  : "StreamUtilization",
+      "Namespace"   : "KENZAN/KinesisMonitor",
+      "Dimensions"  : [
+         {
+            "Name"  : "StreamName",
+            "Value" : "kinesis-autoscale-test-1"
+         }
+      ],
+      "Statistic" : "Average",
+      "Unit"      : "Percent"
+   }
+}

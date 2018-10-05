@@ -1,0 +1,477 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >
+  **WARNING**
+  This template will create and use the following AWS resources: Amazon API Gateway, Kinesis, CloudTrail, CloudWatch, Lambda, and Simple Storage Service (S3).
+  You will be billed for the resources used if you create a stack from this template.
+Resources:
+  CustomResourceEndpoint:
+    DependsOn:
+      - LambdaFunction
+      - CloudWatchRole
+      - CustomResourceScalingTrail
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: Custom Resource Scaling API
+      Description: A new REST API in API Gateway to use with Application Auto Scaling and a mock custom resource.
+      Body:
+        swagger: "2.0"
+        info:
+          description: "Swagger REST API Specification"
+          version: "1.0.0"
+          title: "Scaling API"
+          license:
+            name: MIT-0
+            url: https://spdx.org/licenses/MIT-0.html
+          basePath: "/v1"
+          schemes:
+           - "http"
+          produces:
+           - "application/json"
+        paths:
+          /scalableTargetDimensions/{scalableTargetDimensionId}:
+            get:
+              tags:
+              - "ScalableTargets"
+              summary: "Describe target"
+              description: "Returns information about a registered scalable target dimension, \
+              including the desired and actual capacity."
+              operationId: "controllers.default_controller.scalable_target_id_get"
+              parameters:
+              - name: "scalableTargetDimensionId"
+                in: "path"
+                description: "The identifier of a scalable target dimension to retrieve."
+                required: true
+                type: "string"
+                format: ""
+              responses:
+                '200':
+                  description: "A JSON object that contains information about the resource."
+                  schema:
+                    '$ref': "#/definitions/ScalableTargetDimension"
+                '400':
+                  description: "Client Error"
+                  schema:
+                    '$ref': "#/definitions/Error"
+                '403':
+                  description: "Client Error: Not authorized"
+                  schema:
+                    '$ref': "#/definitions/Error"
+                '404':
+                  description: "Client Error: ScalableTargetDimension not found"
+                  schema:
+                    '$ref': "#/definitions/Error"
+                '429':
+                  description: "Client Error: Too Many Requests"
+                  schema:
+                    '$ref': "#/definitions/Error"
+                '500':
+                  description: "Server Error"
+                  schema:
+                    '$ref': "#/definitions/Error"
+              x-tags:
+              - tag: "ScalableTargets"
+              security:
+              - sigv4: []
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                uri:
+                  !Sub |-
+                    arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                responses:
+                  default:
+                    statusCode: "500"
+                  '200':
+                    statusCode: "200"
+                  '403':
+                    statusCode: "403"
+                  '404':
+                    statusCode: "404"
+                  '429':
+                    statusCode: "429"
+                  '4\d{2}':
+                    statusCode: "400"
+                requestParameters:
+                  integration.request.path.scalableTargetDimensionId: "method.request.path.scalableTargetDimensionId"
+            patch:
+              tags:
+              - "ScalableTargets"
+              summary: "Update ScalableTargetDimension"
+              operationId: "controllers.default_controller.scalable_target_id_patch"
+              consumes:
+              - "application/json"
+              parameters:
+              - name: "scalableTargetDimensionId"
+                in: "path"
+                description: "The identifier of the scalable target dimension to update."
+                required: true
+                type: "string"
+                format: ""
+              - in: "body"
+                name: "updateRequest"
+                description: "A request sent in JSON to update the scalable target dimension."
+                required: true
+                schema:
+                  '$ref': "#/definitions/ScalableTargetDimensionUpdate"
+              responses:
+                '200':
+                  description: "A JSON object that contains information about the resource."
+                  schema:
+                    '$ref': "#/definitions/ScalableTargetDimension"
+                '400':
+                  description: "Client Error"
+                  schema:
+                    '$ref': "#/definitions/Error"
+                '403':
+                  description: "Client Error: Not authorized"
+                  schema:
+                    '$ref': "#/definitions/Error"
+                '404':
+                  description: "Client Error: ScalableTargetDimension not found"
+                  schema:
+                    '$ref': "#/definitions/Error"
+                '429':
+                  description: "Client Error: Too Many Requests"
+                  schema:
+                    '$ref': "#/definitions/Error"
+                '500':
+                  description: "Server Error"
+                  schema:
+                    '$ref': "#/definitions/Error"
+              x-tags:
+              - tag: "ScalableTargets"
+              security:
+              - sigv4: []
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                uri:
+                  !Sub |-
+                    arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations
+                passthroughBehavior: "when_no_match"
+                httpMethod: "POST"
+                responses:
+                  default:
+                    statusCode: "500"
+                  '200':
+                    statusCode: "200"
+                  '403':
+                    statusCode: "403"
+                  '404':
+                    statusCode: "404"
+                  '429':
+                    statusCode: "429"
+                  '4\d{2}':
+                    statusCode: "400"
+                requestParameters:
+                  integration.request.path.scalableTargetDimensionId: "method.request.path.scalableTargetDimensionId"
+        securityDefinitions:
+          sigv4:
+            type: "apiKey"
+            name: "Authorization"
+            in: "header"
+            x-amazon-apigateway-authtype: "awsSigv4"
+        definitions:
+          Error:
+            type: "object"
+            properties:
+              message:
+                type: "string"
+          ScalableTargetDimension:
+            description: "A resource that represents the scaling state for a single dimension \
+           of a scalable target."
+            type: "object"
+            required:
+            - "actualCapacity"
+            - "desiredCapacity"
+            - "scalableTargetDimensionId"
+            - "scalingStatus"
+            - "version"
+            properties:
+              scalableTargetDimensionId:
+                type: "string"
+                format: ""
+                description: "A unique identifier representing a specific scalable target dimension."
+              version:
+                type: "string"
+                format: ""
+                description: "The version associated with the scalable target dimension."
+              actualCapacity:
+                type: "number"
+                format: "double"
+                description: "The actual capacity of the scalable target dimension."
+              desiredCapacity:
+                type: "number"
+                format: "double"
+                description: "The desired capacity of the scalable target dimension."
+              scalingStatus:
+                type: "string"
+                format: ""
+                description: "The current status of scaling activity."
+                enum:
+                - "Pending" # scaling action has not yet begun
+                - "InProgress" # scaling action is in progress
+                - "Successful" # last scaling action was successful
+                - "Failed" # last scaling action has failed
+              resourceName:
+                type: "string"
+                format: ""
+                description: "Optional user-friendly name for a specific resource."
+              dimensionName:
+                type: "string"
+                format: ""
+                description: "Optional user-friendly name for the scalable dimension associated with the resource."
+              failureReason:
+                type: "string"
+                format: ""
+                description: "Optional failure reason that is provided if a scaling action fails."
+          ScalableTargetDimensionUpdate:
+            description: "An update to be applied to the scalable target dimension."
+            type: "object"
+            required:
+            - "desiredCapacity"
+            properties:
+              desiredCapacity:
+                type: "number"
+                format: "double"
+                description: "The new desired capacity of the target."
+  ProdStageDescription:
+    Type: "AWS::ApiGateway::Stage"
+    Properties:
+      DeploymentId: !Ref ProdDeployment
+      Description: "Prod stage"
+      RestApiId: !Ref CustomResourceEndpoint
+      StageName: "prod"
+      MethodSettings:
+        - HttpMethod: "*"
+          LoggingLevel: "INFO"
+          ResourcePath: "/*"
+          MetricsEnabled: true
+          DataTraceEnabled: true
+  ProdDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    Properties:
+      Description: "The prod path through which the Scaling API deployment is accessible."
+      RestApiId: !Ref CustomResourceEndpoint
+  LambdaServiceRole:
+    DependsOn: Account
+    # This service role allows Lambda function to call Kinesis and CloudWatch
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: "CustomResource-LambdaServiceRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        -
+          PolicyName: "CustomResource-LambdaKinesisAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "kinesis:PutRecord"
+                  - "kinesis:DescribeStreamSummary"
+                  - "kinesis:PutRecords"
+                  - "kinesis:GetRecords"
+                  - "kinesis:DescribeStream"
+                  - "kinesis:UpdateShardCount"
+                Resource:
+                  !Sub |-
+                    arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/*
+        -
+          PolicyName: "CustomResource-LambdaLogAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                Resource:
+                  !Sub |-
+                    arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
+              -
+                Effect: "Allow"
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource:
+                  !Sub |-
+                    arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*
+        -
+          PolicyName: "CustomResource-LambdaCloudwatchAccess"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "cloudwatch:PutMetricAlarm"
+                  - "cloudwatch:PutMetricData"
+                  - "cloudwatch:GetMetricData"
+                  - "cloudwatch:GetMetricStatistics"
+                Resource: "*"
+  CloudWatchRole:
+   Type: "AWS::IAM::Role"
+   Properties:
+    AssumeRolePolicyDocument:
+     Version: "2012-10-17"
+     Statement:
+      - Effect: Allow
+        Principal:
+         Service:
+          - "apigateway.amazonaws.com"
+        Action: "sts:AssumeRole"
+    Path: "/"
+    ManagedPolicyArns:
+     - "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+  Account:
+   Type: "AWS::ApiGateway::Account"
+   Properties:
+    CloudWatchRoleArn:
+     "Fn::GetAtt":
+      - CloudWatchRole
+      - Arn
+  LambdaFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Description: "A Lambda function used to scale kinesis streams."
+      FunctionName : "CustomResource-Kinesis-Scaler"
+      Handler: "scaling_resource.lambda_handler"
+      Role:
+        Fn::GetAtt:
+          - "LambdaServiceRole"
+          - "Arn"
+      Code:
+        S3Bucket: lambda.scratch.code
+        S3Key: custom-resource-kinesis-scaler.zip
+      Runtime: "python2.7"
+      Timeout: "30"
+    DependsOn:
+      - LambdaServiceRole
+  LambdaMonitorFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Description: "A Lambda function used to monitor utilization of kinesis streams."
+      FunctionName : "CustomResource-Kinesis-Monitor"
+      Handler: "monitoring_resource.lambda_handler"
+      Role:
+        Fn::GetAtt:
+          - "LambdaServiceRole"
+          - "Arn"
+      Code:
+        S3Bucket: lambda.scratch.code
+        S3Key: custom-resource-kinesis-scaler.zip
+      Runtime: "python2.7"
+      Timeout: "30"
+    DependsOn:
+      - LambdaServiceRole
+  LambdaMonitorScheduledRule:
+    DependsOn: LambdaMonitorFunction
+    Type: "AWS::Events::Rule"
+    Properties: 
+      Description: "ScheduledRule"
+      ScheduleExpression: "rate(10 minutes)"
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: 
+            Fn::GetAtt: 
+              - "LambdaMonitorFunction"
+              - "Arn"
+          Id: "CustomResource-Kinesis-Monitor"
+  PermissionForEventsToInvokeLambda: 
+    DependsOn: LambdaMonitorScheduledRule
+    Type: "AWS::Lambda::Permission"
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaMonitorFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt: 
+          - "LambdaMonitorScheduledRule"
+          - "Arn"
+  LambdaInvokeGETPermission: # Grant API Gateway access to invoke this Lambda function
+    DependsOn: LambdaFunction
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt
+        - LambdaFunction
+        - Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: apigateway.amazonaws.com
+      SourceArn: # arn:aws:execute-api:region:account-id:api-id/stage/method/resource-path
+        !Sub |-
+          arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CustomResourceEndpoint}/*/GET/scalableTargetDimensions/{scalableTargetDimensionId}
+  LambdaInvokePATCHPermission: # Grant API Gateway access to invoke this Lambda function
+    DependsOn: LambdaFunction
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt
+        - LambdaFunction
+        - Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: apigateway.amazonaws.com
+      SourceArn: # arn:aws:execute-api:region:account-id:api-id/stage/method/resource-path
+        !Sub |-
+          arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CustomResourceEndpoint}/*/PATCH/scalableTargetDimensions/{scalableTargetDimensionId}
+  S3Bucket:
+    DeletionPolicy: Retain
+    Type: "AWS::S3::Bucket"
+    Properties: {}
+  BucketPolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket:
+        Ref: S3Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Sid: "AWSCloudTrailAclCheck"
+            Effect: "Allow"
+            Principal:
+              Service: "cloudtrail.amazonaws.com"
+            Action: "s3:GetBucketAcl"
+            Resource:
+              !Sub |-
+                arn:aws:s3:::${S3Bucket}
+          -
+            Sid: "AWSCloudTrailWrite"
+            Effect: "Allow"
+            Principal:
+              Service: "cloudtrail.amazonaws.com"
+            Action: "s3:PutObject"
+            Resource:
+              !Sub |-
+                arn:aws:s3:::${S3Bucket}/AWSLogs/${AWS::AccountId}/*
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: "bucket-owner-full-control"
+  CustomResourceScalingTrail:
+    DependsOn:
+      - BucketPolicy
+    Type: "AWS::CloudTrail::Trail"
+    Properties:
+      S3BucketName:
+        Ref: S3Bucket
+      IsLogging: true
+Outputs:
+  ProdResourceIdPrefix:
+    Description: Application Auto Scaling Resource ID prefix for Prod.
+    Value:
+      !Sub |-
+        https://${CustomResourceEndpoint}.execute-api.${AWS::Region}.amazonaws.com/${ProdStageDescription}/scalableTargetDimensions/
+  S3BucketName:
+      Value: !Ref S3Bucket
+      Description: The location of the CloudTrail logs for API-related event history.
