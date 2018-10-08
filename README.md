@@ -7,7 +7,7 @@ This sample code is intended to demonstrate AWS's new [Custom Resource Scaling](
 It works as follows:
 1. A lambda function, CustomResource-Kinesis-Monitor, is scheduled to run at a fixed rate using Cloudwatch Events Schedule Expression.
 2. The function is responsible for monitoring a list of streams as defined in [config.py](src/config.py).
-   * For each stream it uses the [describe_stream](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/kinesis.html#Kinesis.Client.describe_stream) and to fetch a) the number of shards in the stream, b) the number of IncomingRecords and c) IncomingBytes since the last function execution.
+   * For each stream it uses the [describe_stream](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/kinesis.html#Kinesis.Client.describe_stream) and [get_metric_statistics](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudwatch.html#CloudWatch.Client.get_metric_statistics) APIs to fetch a) the number of shards in the stream, b) the number of IncomingRecords and c) IncomingBytes since the last function execution.
    * These metrics are used to determine stream utilization against the limits defined in [Kinesis Data Streams Limits](https://docs.aws.amazon.com/streams/latest/dev/service-sizes-and-limits.html) (1 MiB of data per second (including partition keys) or 1,000 records per second for writes)
    * The utilization percentage is written as a custom metric to Cloudwatch.
 3. A second lambda function, CustomResource-Kinesis-Scaler, is created whose job it is to scale a kinesis stream in response to a *PATCH* request with the stream name passed in a path parameter and the new desired shard count in the request body.  The real "magic" here is that the lambda is invoked automatically by the Application Auto Scaling component by:
@@ -158,7 +158,7 @@ It works as follows:
 There are a number limitations associated with this approach, stemming in part from inherent limitations of the [update_shard_count](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/kinesis.html#Kinesis.Client.update_shard_count) API:
 
     ```
-     This operation has the following default limits. By default, you cannot do the following:
+    This operation has the following default limits. By default, you cannot do the following:
         Scale more than twice per rolling 24-hour period per stream
         Scale up to more than double your current shard count for a stream
         Scale down below half your current shard count for a stream
@@ -166,4 +166,3 @@ There are a number limitations associated with this approach, stemming in part f
         Scale a stream with more than 500 shards down unless the result is less than 500 shards
         Scale up to more than the shard limit for your account
     ```
-    
