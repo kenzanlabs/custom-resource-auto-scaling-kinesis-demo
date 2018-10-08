@@ -466,6 +466,13 @@ Resources:
       S3BucketName:
         Ref: S3Bucket
       IsLogging: true
+Parameters:
+  LambdaCodeS3Bucket:
+    Type: String
+    Description: The S3 Bucket where our lambda function code zip file is stored.
+  LambdaCodeS3Key:
+    Type: String
+    Description: The name of the zip file containing our lambda function code.
 Outputs:
   ProdResourceIdPrefix:
     Description: Application Auto Scaling Resource ID prefix for Prod.
