@@ -87,17 +87,17 @@ It works as follows:
    {"scalingStatus": "Successful", "actualCapacity": 1, "version": "1.0", "scalableTargetDimensionId": "kinesis-autoscale-test-1", "desiredCapacity": 1}
    ```
    
-9. Next we register the custom resource URL with the AWS application-autoscaling component:
+9. Next we register the custom resource URL with the AWS application-autoscaling component.  Copy the URL in the OutputValue attribute with your Kinesis stream name appended and place it in a file called "custom-resource-id.txt":
 
-   ```
-   echo -n "https://8f1nvfnarc.execute-api.us-east-1.amazonaws.com/prod/scalableTargetDimensions/kinesis-autoscale-test-1" > ~/custom-resource-id.txt
-   ```
-   
-   ```
-   aws application-autoscaling register-scalable-target --service-namespace custom-resource --scalable-dimension custom-resource:ResourceType:Property --resource-id file://~/custom-resource-id.txt --min-capacity 1 --max-capacity 5 
+   ```  
+   echo -n "https://{EXAMPLE-ID}.execute-api.us-east-1.amazonaws.com/prod/scalableTargetDimensions/kinesis-autoscale-test-1" > ~/custom-resource-id.txt
    ```
    
-10. Finally, we need to create a scaling policy which ties our custom resource endpoint to a cloudwatch alarm.  Our policy is defined in [custom_metric_spec.json] (custom_metric_spec.json), which instructs the scaler to target a value of 75% utilization for our target stream.  The MetricName (StreamUtilization) & Namespace (KENZAN/KinesisMonitor) match the metric written in the monitoring lambda:
+   ```
+   aws application-autoscaling register-scalable-target --service-namespace custom-resource --scalable-dimension custom-resource:ResourceType:Property --resource-id file://~/custom-resource-id.txt --min-capacity 1 --max-capacity 10
+   ```
+   
+10. Finally, we need to create a scaling policy which ties our custom resource endpoint to a cloudwatch alarm.  Our policy is defined in [custom_metric_spec.json](custom_metric_spec.json), which instructs the scaler to target a value of 75% utilization for our target stream.  The MetricName (StreamUtilization) & Namespace (KENZAN/KinesisMonitor) match the metric written in the monitoring lambda.  **Note:** steps 9 and 10 would need to be repeated for each stream name in the list of monitored Kinesis streams in [config.py](src/config.py):
  
     ```
     cat ~/custom_metric_spec.json

@@ -25,7 +25,10 @@ def get_current_status_and_shard_count(stream):
             stream_info = kinesis.describe_stream(StreamName = stream["name"])
             stream_status = stream_info['StreamDescription']['StreamStatus']
         num_shards   = len(stream_info['StreamDescription']['Shards'])
-        shard_counter = shard_counter + num_shards
+        # Shards that are in the OPEN state have an ending sequence number of null
+        num_open_shards   = len( filter(lambda shard: ("EndingSequenceNumber" not in shard["SequenceNumberRange"]
+), stream_info['StreamDescription']['Shards'] ))
+        shard_counter = shard_counter + num_open_shards
         last_shard = stream_info['StreamDescription']['Shards'][num_shards - 1]['ShardId']
         if not stream_info['StreamDescription']['HasMoreShards']:
             break
