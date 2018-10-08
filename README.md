@@ -10,8 +10,9 @@ It works as follows:
    * For each stream it uses the [describe_stream](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/kinesis.html#Kinesis.Client.describe_stream) and to fetch a) the number of shards in the stream, b) the number of IncomingRecords and c) IncomingBytes since the last function execution.
    * These metrics are used to determine stream utilization against the limits defined in [Kinesis Data Streams Limits](https://docs.aws.amazon.com/streams/latest/dev/service-sizes-and-limits.html) (1 MiB of data per second (including partition keys) or 1,000 records per second for writes)
    * The utilization percentage is written as a custom metric to Cloudwatch.
-3. A second lambda function, CustomResource-Kinesis-Scaler, whose job it is to scale a kinesis stream in response to a *PATCH* request with the stream name passed in a path parameter and the new desired shard count in the request body is exposed via an API Gateway API which is registered with a application-autoscaling scaling policy.
-   * The application-autoscaling policy specifies that the Auto Scaling component should invoke the scaling API in response to the utilization percentage metric crossing a configured threshold.
+3. A second lambda function, CustomResource-Kinesis-Scaler, is created whose job it is to scale a kinesis stream in response to a *PATCH* request with the stream name passed in a path parameter and the new desired shard count in the request body.  The real "magic" here is that the lambda is invoked automatically by the Application Auto Scaling component by:
+   * Exposing the function via an API Gateway API whose URL is registered as a custom resource with the AWS Auto Scaling component.
+   * Creating an application-autoscaling policy that specifies that the Auto Scaling component should invoke the scaling API in response to the average utilization percentage Cloudwatch metric crossing a configured threshold.
 
 ### Setup:
 
