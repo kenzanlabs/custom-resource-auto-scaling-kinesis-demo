@@ -167,7 +167,9 @@ This operation has the following default limits. By default, you cannot do the f
     Scale up to more than the shard limit for your account
 ```
 
-The limitation around scaling more than twice in a 24-hour period in particular, limits the potential ability to react to swings in traffic.  For this reason the scaling function will only increase the number of shards, as a shard merge operation could leave the stream in a state where it can not be scaled back up after being scaled down in response to a temporary lull in activity.
+The limitation of two scaling operations in a 24-hour period in particular limits the ability to react to swings in traffic.  
+
+For this reason, when creating the scaling function we decided to only ever let increase the number of shards (scale up), as a shard merge operation (scale down) could leave the stream in a state where the two operation limit is met, and the stream cannot be increased in response to a future increase in traffic.
 
 As such, the code functions more as a thought-experiment than a hardened solution, but nevertheless, even in its current state it successfully demonstrates the power and flexability of AWS custom resource auto scaling, and could be used as a jumping point for further exploring more complex use cases.
 
