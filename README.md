@@ -157,12 +157,12 @@ It works as follows:
 
 There are a number limitations associated with this approach, stemming in part from inherent limitations of the [update_shard_count](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/kinesis.html#Kinesis.Client.update_shard_count) API:
 
-    ```
-    This operation has the following default limits. By default, you cannot do the following:
-        Scale more than twice per rolling 24-hour period per stream
-        Scale up to more than double your current shard count for a stream
-        Scale down below half your current shard count for a stream
-        Scale up to more than 500 shards in a stream
-        Scale a stream with more than 500 shards down unless the result is less than 500 shards
-        Scale up to more than the shard limit for your account
-    ```
+```
+This operation has the following default limits. By default, you cannot do the following:
+    Scale more than twice per rolling 24-hour period per stream
+    Scale up to more than double your current shard count for a stream
+    Scale down below half your current shard count for a stream
+    Scale up to more than 500 shards in a stream
+    Scale a stream with more than 500 shards down unless the result is less than 500 shards
+    Scale up to more than the shard limit for your account
+```
