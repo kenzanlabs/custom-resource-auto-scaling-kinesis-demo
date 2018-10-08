@@ -30,7 +30,7 @@ def lambda_handler(event, context):
             error, response = patch(stream, scalable_target_dimension_update)
         return respond(error, response)
     else:
-        return respond('Unsupported method "{}"'.format(operation))
+        return respond('Unsupported HTTP method "{}"'.format(operation))
 
 def scalable_target_dimension_id_to_stream(scalable_target_dimension_id):
     matching_streams = filter(lambda stream: stream['name'] == scalable_target_dimension_id, cfg.streams)
@@ -42,7 +42,7 @@ def scalable_target_dimension_id_to_stream(scalable_target_dimension_id):
 def respond(error, response=None):
     print("res=%s, err=%s" % (str(response), str(error)))
     return {
-        'statusCode': 400 if error else 200,
+        'statusCode': 400   if error else 200,
         'body'      : error if error else response,
         'headers'   : {
             'Content-Type': 'application/json',
@@ -52,14 +52,21 @@ def respond(error, response=None):
 def patch(stream, scalable_target_dimension_update):
     desired_capacity = scalable_target_dimension_update["desiredCapacity"]
     stream_status, shard_count = streams.get_current_status_and_shard_count(stream)
-    if stream_status != streams.STATUS_ACTIVE:
+    if stream_status == streams.UPDATING:
+        # Update already in progress
+        return (None,json.dumps({'scalableTargetDimensionId':stream["name"], 'scalingStatus':STATUS_IN_PROGRESS,'actualCapacity':shard_count,'desiredCapacity':desired_capacity, 'version':'1.0'}))
+    elif stream_status != streams.STATUS_ACTIVE:
+        # Creating | Deleting
         return ('Error: stream not in scalable state: {}.'.format(stream_status), None)
+    # Stream in ACTIVE state, attempt to update shard count...
     if desired_capacity < shard_count:
-        return ('Error: stream downscaling not supported: {}.'.format(desired_capacity), None)
+        # Downscaling not supported.
+        return (None,json.dumps({'scalableTargetDimensionId':stream["name"], 'scalingStatus':STATUS_FAILED,'actualCapacity':shard_count,'desiredCapacity':desired_capacity, 'version':'1.0'}))
     if desired_capacity > stream["maxShards"]:
-        return ('Error: stream already at maximum allowed number of shards: {}.'.format(str(stream["maxShards"])), None)
-    # streams.update_shard_count(stream, int(desired_capacity))
+        # Stream already at maximum allowed number of shards.
+        return (None,json.dumps({'scalableTargetDimensionId':stream["name"], 'scalingStatus':STATUS_FAILED,'actualCapacity':shard_count,'desiredCapacity':desired_capacity, 'version':'1.0'}))
     print("streams.update_shard_count(%s, %d)" % (stream["name"], int(desired_capacity)))
+    streams.update_shard_count(stream, int(desired_capacity))
     return (None,json.dumps({'scalableTargetDimensionId':stream["name"], 'scalingStatus':STATUS_IN_PROGRESS,'actualCapacity':shard_count,'desiredCapacity':desired_capacity, 'version':'1.0'}))
 
 def get(stream):
