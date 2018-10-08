@@ -2,7 +2,16 @@
 
 ### Overview
 
-This sample code is intended to demonstrate AWS's new [Custom Resource Scaling](https://aws.amazon.com/about-aws/whats-new/2018/07/add-scaling-to-services-you-build-on-aws/) feature, by building on the mock resource stack found in [https://github.com/aws/aws-auto-scaling-custom-resource](https://github.com/aws/aws-auto-scaling-custom-resource) to dynamically increase the shard count of a kinesis stream in response to sustained heavy utilization.
+This sample code is intended to demonstrate AWS's new [Custom Resource Scaling](https://aws.amazon.com/about-aws/whats-new/2018/07/add-scaling-to-services-you-build-on-aws/) feature, by building on the mock resource stack found in [https://github.com/aws/aws-auto-scaling-custom-resource](https://github.com/aws/aws-auto-scaling-custom-resource) to dynamically increase the shard count of a Kinesis stream in response to high percent utilization.
+
+It works as follows:
+1. A lambda function, CustomResource-Kinesis-Monitor, is scheduled to run at a fixed rate using Cloudwatch Events Schedule Expression.
+2. The function is responsible for monitoring a list of streams as defined in [config.py](src/config.py).
+   * For each stream it uses the [describe_stream](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/kinesis.html#Kinesis.Client.describe_stream) and to fetch a) the number of shards in the stream, b) the number of IncomingRecords and c) IncomingBytes since the last function execution.
+   * These metrics are used to determine stream utilization against the limits defined in [Kinesis Data Streams Limits](https://docs.aws.amazon.com/streams/latest/dev/service-sizes-and-limits.html) (1 MiB of data per second (including partition keys) or 1,000 records per second for writes)
+   * The utilization percentage is written as a custom metric to Cloudwatch.
+3. A second lambda function, CustomResource-Kinesis-Scaler, whose job it is to scale a kinesis stream in response to a *PATCH* request with the stream name passed in a path parameter and the new desired shard count in the request body is exposed via an API Gateway API which is registered with a application-autoscaling scaling policy.
+   * The application-autoscaling policy specifies that the Auto Scaling component should invoke the scaling API in response to the utilization percentage metric crossing a configured threshold.
 
 ### Setup:
 
@@ -143,3 +152,17 @@ This sample code is intended to demonstrate AWS's new [Custom Resource Scaling](
     }
     ```
  
+### Limitations
+
+There are a number limitations associated with this approach, stemming from inherent limitations around the Kinesis scaling, see: [update_shard_count](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/kinesis.html#Kinesis.Client.update_shard_count)
+
+    ```
+     This operation has the following default limits. By default, you cannot do the following:
+        Scale more than twice per rolling 24-hour period per stream
+        Scale up to more than double your current shard count for a stream
+        Scale down below half your current shard count for a stream
+        Scale up to more than 500 shards in a stream
+        Scale a stream with more than 500 shards down unless the result is less than 500 shards
+        Scale up to more than the shard limit for your account
+    ```
+    
