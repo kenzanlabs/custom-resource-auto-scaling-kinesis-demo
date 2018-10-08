@@ -18,10 +18,16 @@ This sample code is intended to demonstrate AWS's new [Custom Resource Scaling](
 2. Enter the name of the stream in [config.py](src/config.py) configuration file.
    * Out-of-the-box the configuration file is setup to look for a test stream, kinesis-autoscale-test-1.
 3. Zip up the python code under the [src](src/) directory & upload to an S3 bucket.
-4. Use the aws cli to create the stack (command shown below wth region "us-east-1"):
+4. Use the aws cli to create the stack.  Be sure to change the region, and S3Bucket and S3Key name parameters as appropriate:
 
     ```
-    aws cloudformation create-stack --stack-name CustomResourceKinesisScalerStack --template-body file://./custom-resource-kinesis-scaler-stack.yaml --region us-east-1 --capabilities CAPABILITY_NAMED_IAM CAPABILITY_IAM
+    aws cloudformation create-stack --stack-name CustomResourceKinesisScalerStack \
+        --template-body file://./custom-resource-kinesis-scaler-stack.yaml \
+        --region us-east-1 \
+        --parameters \
+            ParameterKey=LambdaCodeS3Bucket,ParameterValue="lambda.scratch.code" \
+            ParameterKey=LambdaCodeS3Key,ParameterValue="custom-resource-kinesis-scaler.zip" \
+        --capabilities CAPABILITY_NAMED_IAM CAPABILITY_IAM
     ```
     
 5. The creation should only take a few minutes. When complete the command below should return with "StackStatus": "CREATE_COMPLETE":
@@ -111,7 +117,7 @@ This sample code is intended to demonstrate AWS's new [Custom Resource Scaling](
     
 ### Testing
 
-1. We can run a batch process to put records on the target stream (a test method is included in [streams.py](src/streams.py) and allow the monitoring process to observe & record the load, or alternatively can execute:
+1. We can run a batch process to put records on the target stream (a test function, *put_records*, is included in [streams.py](src/streams.py) and allow the monitoring process to observe & record the load, or alternatively can execute:
 
     ```
     aws cloudwatch put-metric-data --metric-name StreamUtilization --namespace "KENZAN/KinesisMonitor" --value 80 --unit Percent --dimensions StreamName=kinesis-autoscale-test-1 
