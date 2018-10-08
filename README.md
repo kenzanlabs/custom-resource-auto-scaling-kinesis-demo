@@ -152,10 +152,10 @@ It works as follows:
         ]
     }
     ```
- 
+
 ### Limitations
 
-There are a number limitations associated with this approach, stemming from inherent limitations around the Kinesis scaling, see: [update_shard_count](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/kinesis.html#Kinesis.Client.update_shard_count)
+There are a number limitations associated with this approach, stemming in part from inherent limitations of the [update_shard_count](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/kinesis.html#Kinesis.Client.update_shard_count) API:
 
     ```
      This operation has the following default limits. By default, you cannot do the following:
