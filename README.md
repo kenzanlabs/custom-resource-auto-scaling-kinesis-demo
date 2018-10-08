@@ -8,9 +8,9 @@ This sample code is intended to demonstrate AWS's new [Custom Resource Scaling](
 
 #### Resources Created:
 1. Two lambda functions:
-   * A function for monitoring the utilization of a configured set of kinesis streams as a function of current shard count, incoming bytes, and incoming messages and writing those values to a custom cloudwatch metric.
-   * A function for scaling a heavily utilized stream by increasing it's shard count.
-2. An API Gateway resource to expose the scaling lambda to the AWS Auto-Scaling component
+   * **CustomResource-Kinesis-Monitor** - A function for monitoring the utilization of a configured set of kinesis streams as a function of current shard count, incoming bytes, and incoming messages and writing those values to a custom cloudwatch metric.
+   * **CustomResource-Kinesis-Scaler** - A function for scaling a heavily utilized stream by increasing it's shard count.
+2. An API Gateway resource which exposes the scaling function to the Auto Scaling component.
 3. IAM roles allowing the lambdas access to cloudwatch & kinesis.
 
 ### Steps:
