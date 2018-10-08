@@ -2,9 +2,9 @@
 
 ### Overview
 
-This sample code is intended to demonstrate AWS's new [Custom Resource Scaling](https://aws.amazon.com/about-aws/whats-new/2018/07/add-scaling-to-services-you-build-on-aws/) feature, by building on the mock resource stack found in [https://github.com/aws/aws-auto-scaling-custom-resource](https://github.com/aws/aws-auto-scaling-custom-resource) to dynamically increase the shard count of a Kinesis stream in response to high percent utilization.
+This sample code is intended to explore real-world usage of AWS's new [Custom Resource Scaling](https://aws.amazon.com/about-aws/whats-new/2018/07/add-scaling-to-services-you-build-on-aws/) feature, by building on the mock resource stack found in [https://github.com/aws/aws-auto-scaling-custom-resource](https://github.com/aws/aws-auto-scaling-custom-resource) to dynamically increase the shard count of a Kinesis stream in response to high utilization.
 
-It works as follows:
+### How It Works:
 1. A lambda function, CustomResource-Kinesis-Monitor, is scheduled to run at a fixed rate using Cloudwatch Events Schedule Expression.
 2. The function is responsible for monitoring a list of streams as defined in [config.py](src/config.py).
    * For each stream it uses the [describe_stream](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/kinesis.html#Kinesis.Client.describe_stream) and [get_metric_statistics](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/cloudwatch.html#CloudWatch.Client.get_metric_statistics) APIs to fetch a) the number of shards in the stream, b) the number of IncomingRecords and c) IncomingBytes since the last function execution.
@@ -125,7 +125,7 @@ It works as follows:
     aws application-autoscaling put-scaling-policy --policy-name custom-tt-scaling-policy --policy-type TargetTrackingScaling --service-namespace custom-resource --scalable-dimension custom-resource:ResourceType:Property --resource-id file://~/custom-resource-id.txt --target-tracking-scaling-policy-configuration file://./custom_metric_spec.json
     ```
     
-### Testing
+### Testing:
 
 1. We can run a batch process to put records on the target stream (a test function, *put_records*, is included in [streams.py](src/streams.py) and allow the monitoring process to observe & record the load, or alternatively can execute:
 
@@ -153,9 +153,9 @@ It works as follows:
     }
     ```
 
-### Limitations
+### Limitations:
 
-There are a number limitations associated with this approach, stemming in part from inherent limitations of the [update_shard_count](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/kinesis.html#Kinesis.Client.update_shard_count) API:
+In practice, there are a number limitations associated with this approach, stemming in part from inherent limitations of the [update_shard_count](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/kinesis.html#Kinesis.Client.update_shard_count) API, specifically:
 
 ```
 This operation has the following default limits. By default, you cannot do the following:
@@ -167,7 +167,12 @@ This operation has the following default limits. By default, you cannot do the f
     Scale up to more than the shard limit for your account
 ```
 
-### Cleaning Up
+The limitation around scaling more than twice in a 24-hour period in particular, limits the potential ability to react to swings in traffic.  For this reason the scaling function will only increase the number of shards, as a shard merge operation could leave the stream in a state where it can not be scaled back up after being scaled down in response to a temporary lull in activity.
+
+As such, the code functions more as a thought-experiment than a hardened solution, but nevertheless, even in its current state it successfully demonstrates the power and flexability of AWS custom resource auto scaling, and could be used as a jumping point for further exploring more complex use cases.
+
+
+### Cleaning Up:
 
 The resource created via the installation steps can be cleaned up by executing the following commands:
 
@@ -178,3 +183,18 @@ aws application-autoscaling deregister-scalable-target --service-namespace custo
 
 aws cloudformation delete-stack --stack-name CustomResourceKinesisScalerStack --region us-east-1
 ```
+
+### LICENSE:
+Copyright 2018 Kenzan, LLC - <http://kenzan.com>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
