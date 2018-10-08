@@ -32,7 +32,7 @@ It works as follows:
 
     ```
     aws cloudformation create-stack --stack-name CustomResourceKinesisScalerStack \
-        --template-body file://./custom-resource-kinesis-scaler-stack.yaml \
+        --template-body file://./cloudformation/templates/custom-resource-auto-scaling-kinesis-demo-stack.yaml \
         --region us-east-1 \
         --parameters \
             ParameterKey=LambdaCodeS3Bucket,ParameterValue="lambda.scratch.code" \
@@ -165,4 +165,16 @@ This operation has the following default limits. By default, you cannot do the f
     Scale up to more than 500 shards in a stream
     Scale a stream with more than 500 shards down unless the result is less than 500 shards
     Scale up to more than the shard limit for your account
+```
+
+### Cleaning Up
+
+The resource created via the installation steps can be cleaned up by executing the following commands:
+
+```
+aws application-autoscaling delete-scaling-policy --policy-name custom-tt-scaling-policy --service-namespace custom-resource --scalable-dimension custom-resource:ResourceType:Property --resource-id file://~/custom-resource-id.txt
+
+aws application-autoscaling deregister-scalable-target --service-namespace custom-resource --scalable-dimension custom-resource:ResourceType:Property --resource-id file://~/custom-resource-id.txt
+
+aws cloudformation delete-stack --stack-name CustomResourceKinesisScalerStack --region us-east-1
 ```
